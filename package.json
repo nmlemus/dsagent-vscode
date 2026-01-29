@@ -1,0 +1,197 @@
+{
+  "name": "dsagent",
+  "displayName": "DSAgent - AI Data Science Assistant",
+  "description": "AI-powered data science agent for VS Code. Analyze data, create visualizations, and build models with natural language.",
+  "version": "0.1.0",
+  "publisher": "aiudalabs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aiudalabs/dsagent-vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Data Science",
+    "Machine Learning",
+    "Notebooks",
+    "Chat"
+  ],
+  "keywords": [
+    "data science",
+    "ai",
+    "machine learning",
+    "jupyter",
+    "pandas",
+    "python"
+  ],
+  "activationEvents": [
+    "onCommand:dsagent.openChat",
+    "onView:dsagent.sessionsView",
+    "onView:dsagent.variablesView",
+    "onLanguage:python",
+    "onNotebook:jupyter-notebook"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "resources/icons/dsagent.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dsagent",
+          "title": "DSAgent",
+          "icon": "resources/icons/dsagent.svg"
+        }
+      ]
+    },
+    "views": {
+      "dsagent": [
+        {
+          "id": "dsagent.sessionsView",
+          "name": "Sessions"
+        },
+        {
+          "id": "dsagent.variablesView",
+          "name": "Variables"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "dsagent.openChat",
+        "title": "Open Chat",
+        "category": "DSAgent",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "dsagent.startChat",
+        "title": "Start New Chat",
+        "category": "DSAgent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dsagent.connectServer",
+        "title": "Connect to Server",
+        "category": "DSAgent",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "dsagent.disconnectServer",
+        "title": "Disconnect from Server",
+        "category": "DSAgent",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "dsagent.analyzeSelection",
+        "title": "Analyze with DSAgent",
+        "category": "DSAgent",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "dsagent.analyzeFile",
+        "title": "Analyze File with DSAgent",
+        "category": "DSAgent",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "dsagent.refreshSessions",
+        "title": "Refresh Sessions",
+        "category": "DSAgent",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "dsagent.analyzeSelection",
+          "when": "editorHasSelection && editorLangId == python",
+          "group": "dsagent@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "dsagent.analyzeFile",
+          "when": "resourceExtname == .csv || resourceExtname == .xlsx || resourceExtname == .json || resourceExtname == .parquet",
+          "group": "dsagent@1"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "dsagent.openChat",
+          "when": "view == dsagent.sessionsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dsagent.startChat",
+          "when": "view == dsagent.sessionsView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "dsagent.refreshSessions",
+          "when": "view == dsagent.sessionsView",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DSAgent",
+      "properties": {
+        "dsagent.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "DSAgent server URL"
+        },
+        "dsagent.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to server on startup"
+        },
+        "dsagent.model": {
+          "type": "string",
+          "default": "gpt-4o",
+          "enum": [
+            "gpt-4o",
+            "gpt-4o-mini",
+            "claude-sonnet-4-20250514",
+            "claude-opus-4-20250514",
+            "gemini-2.0-flash",
+            "gemini-2.5-pro"
+          ],
+          "description": "Default LLM model to use"
+        },
+        "dsagent.showThinking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show thinking indicator while agent is processing"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:webview && node esbuild.js --production",
+    "build:webview": "cd webview-ui && npm run build",
+    "watch": "node esbuild.js --watch",
+    "watch:webview": "cd webview-ui && npm run dev",
+    "dev": "concurrently \"npm run watch\" \"npm run watch:webview\"",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "concurrently": "^8.2.0",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "ws": "^8.14.0"
+  }
+}
