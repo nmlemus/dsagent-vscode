@@ -374,6 +374,50 @@ export class DSAgentClient extends EventEmitter {
         }
     }
 
+    // === Session Notebook ===
+
+    async downloadNotebook(): Promise<Uint8Array> {
+        if (!this.currentSession) {
+            throw new Error('No active session');
+        }
+
+        const response = await this.fetch(
+            `/api/sessions/${this.currentSession.id}/notebook`
+        );
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to download notebook: ${error}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    }
+
+    // === Code Execution ===
+
+    async executeCode(code: string): Promise<ExecutionResult> {
+        if (!this.currentSession) {
+            throw new Error('No active session');
+        }
+
+        const response = await this.fetch(
+            `/api/sessions/${this.currentSession.id}/kernel/execute`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code }),
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Code execution failed: ${error}`);
+        }
+
+        return response.json();
+    }
+
     // === Kernel State ===
 
     async getKernelState(): Promise<KernelState | null> {

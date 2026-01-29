@@ -1,13 +1,18 @@
 import * as vscode from 'vscode';
 import { DSAgentClient } from './api/client';
-import { ChatViewProvider } from './providers/chatViewProvider';
+import { ChatPanelProvider } from './providers/chatViewProvider';
+import { DSAgentChatParticipant } from './providers/chatParticipant';
+import { DSAgentNotebookController } from './providers/notebookController';
 import { SessionsTreeProvider } from './providers/sessionsTreeProvider';
 import { VariablesTreeProvider } from './providers/variablesTreeProvider';
 import { StatusBarManager } from './services/statusBar';
+import { NotebookSyncService } from './services/notebookSync';
 import { registerCommands } from './commands';
 
 let client: DSAgentClient;
 let statusBar: StatusBarManager;
+let chatParticipant: DSAgentChatParticipant;
+let chatPanel: ChatPanelProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
     console.log('DSAgent extension is now active');
@@ -23,14 +28,44 @@ export async function activate(context: vscode.ExtensionContext) {
     statusBar = new StatusBarManager(client);
     context.subscriptions.push(statusBar);
 
-    // Chat panel (opens as editor panel on the right)
-    const chatProvider = new ChatViewProvider(context.extensionUri, client);
-    context.subscriptions.push({ dispose: () => chatProvider.dispose() });
+    // Chat panel (custom WebviewPanel — opens beside the editor)
+    chatPanel = new ChatPanelProvider(context.extensionUri, client);
+    context.subscriptions.push({ dispose: () => chatPanel.dispose() });
 
-    // Command to open/focus the chat panel
+    // Register chat panel commands
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.openChat', () => {
-            chatProvider.show();
+            chatPanel.show();
+        }),
+        vscode.commands.registerCommand('dsagent.startChat', () => {
+            chatPanel.startNewChat();
+        })
+    );
+
+    // Chat participant (native VS Code Chat API — appears in Secondary Side Bar)
+    chatParticipant = new DSAgentChatParticipant(context, client);
+    context.subscriptions.push({ dispose: () => chatParticipant.dispose() });
+
+    // Notebook sync — downloads and syncs the session notebook
+    const notebookSync = new NotebookSyncService(client);
+    context.subscriptions.push({ dispose: () => notebookSync.dispose() });
+
+    // Notebook controller — lets users run notebook cells via DSAgent kernel
+    const notebookController = new DSAgentNotebookController(client);
+    notebookController.setNotebookSync(notebookSync);
+    context.subscriptions.push({ dispose: () => notebookController.dispose() });
+
+    // Command to open the session notebook
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.openNotebook', () => {
+            notebookSync.openSessionNotebook();
+        })
+    );
+
+    // Command to refresh the session notebook from backend
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.refreshNotebook', () => {
+            notebookSync.refreshNotebook();
         })
     );
 
@@ -47,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Register all commands
-    registerCommands(context, client, chatProvider, sessionsProvider, variablesProvider);
+    registerCommands(context, client, chatPanel, sessionsProvider, variablesProvider);
 
     // Auto-connect if enabled
     if (config.get<boolean>('autoConnect', true)) {

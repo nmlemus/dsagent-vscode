@@ -1,24 +1,16 @@
 import * as vscode from 'vscode';
 import { DSAgentClient } from '../api/client';
-import { ChatViewProvider } from '../providers/chatViewProvider';
+import { ChatPanelProvider } from '../providers/chatViewProvider';
 import { SessionsTreeProvider } from '../providers/sessionsTreeProvider';
 import { VariablesTreeProvider } from '../providers/variablesTreeProvider';
 
 export function registerCommands(
     context: vscode.ExtensionContext,
     client: DSAgentClient,
-    chatProvider: ChatViewProvider,
+    chatProvider: ChatPanelProvider,
     sessionsProvider: SessionsTreeProvider,
     variablesProvider: VariablesTreeProvider
 ): void {
-    // Start new chat
-    context.subscriptions.push(
-        vscode.commands.registerCommand('dsagent.startChat', async () => {
-            await chatProvider.startNewChat();
-            vscode.commands.executeCommand('dsagent.openChat');
-        })
-    );
-
     // Connect to server
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.connectServer', async () => {
@@ -51,7 +43,7 @@ export function registerCommands(
         })
     );
 
-    // Analyze selection
+    // Analyze selection — opens native chat with @dsagent and the selected text
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.analyzeSelection', async () => {
             const editor = vscode.window.activeTextEditor;
@@ -68,12 +60,14 @@ export function registerCommands(
                 return;
             }
 
-            chatProvider.sendAnalysisRequest(text, 'Python code');
-            vscode.commands.executeCommand('dsagent.openChat');
+            // Open VS Code chat with @dsagent and the prompt
+            vscode.commands.executeCommand('workbench.action.chat.open', {
+                query: `@dsagent /analyze ${text}`,
+            });
         })
     );
 
-    // Analyze file
+    // Analyze file — opens native chat with @dsagent
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.analyzeFile', async (uri?: vscode.Uri) => {
             let fileUri = uri;
@@ -101,30 +95,11 @@ export function registerCommands(
             }
 
             const fileName = fileUri.fsPath.split('/').pop() || fileUri.fsPath;
-            const extension = fileName.split('.').pop()?.toLowerCase();
 
-            let fileType = 'data file';
-            switch (extension) {
-                case 'csv':
-                    fileType = 'CSV file';
-                    break;
-                case 'xlsx':
-                case 'xls':
-                    fileType = 'Excel file';
-                    break;
-                case 'json':
-                    fileType = 'JSON file';
-                    break;
-                case 'parquet':
-                    fileType = 'Parquet file';
-                    break;
-            }
-
-            chatProvider.sendAnalysisRequest(
-                `File path: ${fileUri.fsPath}`,
-                fileType
-            );
-            vscode.commands.executeCommand('dsagent.openChat');
+            // Open VS Code chat with @dsagent and file reference
+            vscode.commands.executeCommand('workbench.action.chat.open', {
+                query: `@dsagent /analyze Analyze the file: ${fileName} (path: ${fileUri.fsPath})`,
+            });
         })
     );
 
@@ -135,13 +110,16 @@ export function registerCommands(
         })
     );
 
-    // Resume session
+    // Resume session — opens the chat panel with session history
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.resumeSession', async (sessionId: string) => {
-            await chatProvider.loadSession(sessionId);
-            sessionsProvider.refresh();
-            variablesProvider.refresh();
-            vscode.commands.executeCommand('dsagent.openChat');
+            try {
+                await chatProvider.loadSession(sessionId);
+                sessionsProvider.refresh();
+                variablesProvider.refresh();
+            } catch (error) {
+                vscode.window.showErrorMessage('Failed to resume session');
+            }
         })
     );
 

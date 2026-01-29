@@ -26,7 +26,9 @@
     "python"
   ],
   "activationEvents": [
+    "onChatParticipant:dsagent.chat",
     "onCommand:dsagent.openChat",
+    "onCommand:dsagent.startChat",
     "onView:dsagent.sessionsView",
     "onView:dsagent.variablesView",
     "onLanguage:python",
@@ -35,6 +37,29 @@
   "main": "./dist/extension.js",
   "icon": "resources/icons/dsagent.png",
   "contributes": {
+    "chatParticipants": [
+      {
+        "id": "dsagent.chat",
+        "fullName": "DSAgent",
+        "name": "dsagent",
+        "description": "AI-powered data science assistant. Analyze data, create visualizations, and build models.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "analyze",
+            "description": "Analyze a dataset or code"
+          },
+          {
+            "name": "visualize",
+            "description": "Create a visualization"
+          },
+          {
+            "name": "model",
+            "description": "Build a machine learning model"
+          }
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -98,6 +123,28 @@
         "title": "Refresh Sessions",
         "category": "DSAgent",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "dsagent.openNotebook",
+        "title": "Open Session Notebook",
+        "category": "DSAgent",
+        "icon": "$(notebook)"
+      },
+      {
+        "command": "dsagent.refreshNotebook",
+        "title": "Refresh Session Notebook",
+        "category": "DSAgent",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "dsagent.approveAction",
+        "title": "Approve Action",
+        "category": "DSAgent"
+      },
+      {
+        "command": "dsagent.rejectAction",
+        "title": "Reject Action",
+        "category": "DSAgent"
       }
     ],
     "menus": {
@@ -117,22 +164,23 @@
       ],
       "view/title": [
         {
-          "command": "dsagent.openChat",
-          "when": "view == dsagent.sessionsView",
-          "group": "navigation@1"
-        },
-        {
           "command": "dsagent.startChat",
           "when": "view == dsagent.sessionsView",
-          "group": "navigation@2"
+          "group": "navigation@0"
         },
         {
           "command": "dsagent.refreshSessions",
           "when": "view == dsagent.sessionsView",
-          "group": "navigation@3"
+          "group": "navigation@1"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "dsagent.sessionsView",
+        "contents": "No sessions yet.\n[Start New Chat](command:dsagent.startChat)"
+      }
+    ],
     "configuration": {
       "title": "DSAgent",
       "properties": {

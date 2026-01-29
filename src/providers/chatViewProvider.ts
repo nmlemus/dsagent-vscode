@@ -3,15 +3,12 @@ import { DSAgentClient } from '../api/client';
 import { getNonce } from '../utils/nonce';
 import type { AgentEvent, ChatMessage, PlanState, Turn } from '../api/types';
 
-export class ChatViewProvider {
-    public static readonly viewType = 'dsagent.chatView';
-
+export class ChatPanelProvider {
     private _panel?: vscode.WebviewPanel;
     private messages: ChatMessage[] = [];
     private currentPlan: PlanState | null = null;
     private isThinking = false;
     private serverAvailable = false;
-    private _disposables: vscode.Disposable[] = [];
     private _pendingAction: 'loadHistory' | 'newChat' | null = null;
 
     constructor(
@@ -80,23 +77,21 @@ export class ChatViewProvider {
             this.serverAvailable = true;
             this.postMessage({ type: 'serverAvailable' });
         });
-
     }
 
     /**
-     * Show the chat panel on the right side (ViewColumn.Two).
-     * If the panel already exists, reveal it; otherwise create a new one.
+     * Create or reveal the chat panel in ViewColumn.Beside.
      */
     public show(): void {
         if (this._panel) {
-            this._panel.reveal(vscode.ViewColumn.Two);
+            this._panel.reveal(vscode.ViewColumn.Beside);
             return;
         }
 
         this._panel = vscode.window.createWebviewPanel(
-            ChatViewProvider.viewType,
+            'dsagent.chatPanel',
             'DSAgent Chat',
-            { viewColumn: vscode.ViewColumn.Two, preserveFocus: true },
+            vscode.ViewColumn.Beside,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
@@ -108,52 +103,44 @@ export class ChatViewProvider {
         );
 
         this._panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'icons', 'dsagent.svg');
+
         this._panel.webview.html = this.getHtmlForWebview(this._panel.webview);
 
-        this._panel.webview.onDidReceiveMessage(
-            async (data) => {
-                switch (data.type) {
-                    case 'sendMessage':
-                        await this.handleSendMessage(data.content);
-                        break;
-                    case 'approve':
-                        this.client.approveAction();
-                        break;
-                    case 'reject':
-                        this.client.rejectAction();
-                        break;
-                    case 'modify':
-                        this.client.respondAction('modify', data.message, data.modification);
-                        break;
-                    case 'attachFile':
-                        await this.handleAttachFile();
-                        break;
-                    case 'removeAttachedFile':
-                        break;
-                    case 'ready':
-                        this.syncState();
-                        if (this._pendingAction === 'loadHistory') {
-                            this._pendingAction = null;
-                            await this.loadHistory();
-                        } else if (this._pendingAction === 'newChat') {
-                            this._pendingAction = null;
-                            this.postMessage({ type: 'newChat' });
-                        }
-                        break;
-                }
-            },
-            null,
-            this._disposables
-        );
+        this._panel.webview.onDidReceiveMessage(async (data) => {
+            switch (data.type) {
+                case 'sendMessage':
+                    await this.handleSendMessage(data.content);
+                    break;
+                case 'approve':
+                    this.client.approveAction();
+                    break;
+                case 'reject':
+                    this.client.rejectAction();
+                    break;
+                case 'modify':
+                    this.client.respondAction('modify', data.message, data.modification);
+                    break;
+                case 'attachFile':
+                    await this.handleAttachFile();
+                    break;
+                case 'removeAttachedFile':
+                    break;
+                case 'ready':
+                    this.syncState();
+                    if (this._pendingAction === 'loadHistory') {
+                        this._pendingAction = null;
+                        await this.loadHistory();
+                    } else if (this._pendingAction === 'newChat') {
+                        this._pendingAction = null;
+                        this.postMessage({ type: 'newChat' });
+                    }
+                    break;
+            }
+        });
 
-        this._panel.onDidDispose(
-            () => {
-                this._panel = undefined;
-                this._disposables.forEach(d => d.dispose());
-                this._disposables = [];
-            },
-            null
-        );
+        this._panel.onDidDispose(() => {
+            this._panel = undefined;
+        });
     }
 
     private async handleSendMessage(content: string): Promise<void> {
@@ -314,7 +301,6 @@ export class ChatViewProvider {
         try {
             await this.client.createSession();
             if (this._panel) {
-                this._panel.reveal(vscode.ViewColumn.Two);
                 this.postMessage({ type: 'newChat' });
             } else {
                 this._pendingAction = 'newChat';
@@ -333,10 +319,8 @@ export class ChatViewProvider {
             await this.client.resumeSession(sessionId);
 
             if (this._panel) {
-                // Panel already exists and webview is ready — load directly
                 await this.loadHistory();
             } else {
-                // Panel will be created — defer until webview sends 'ready'
                 this._pendingAction = 'loadHistory';
                 this.show();
             }
@@ -357,8 +341,6 @@ export class ChatViewProvider {
 
     public dispose(): void {
         this._panel?.dispose();
-        this._disposables.forEach(d => d.dispose());
-        this._disposables = [];
     }
 
     private getHtmlForWebview(webview: vscode.Webview): string {
