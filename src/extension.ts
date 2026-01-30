@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DSAgentClient } from './api/client';
 import { ChatPanelProvider } from './providers/chatViewProvider';
 import { DSAgentChatParticipant } from './providers/chatParticipant';
@@ -89,6 +92,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Artifacts commands
+    let artifactPreviewPanel: vscode.WebviewPanel | undefined;
+
     context.subscriptions.push(
         vscode.commands.registerCommand('dsagent.refreshArtifacts', () => {
             artifactsProvider.refresh();
@@ -103,19 +108,42 @@ export async function activate(context: vscode.ExtensionContext) {
             const fullUrl = `${serverUrl}${artifact.url}`;
 
             if (artifact.type === 'image') {
-                // Open image in a webview panel
-                const panel = vscode.window.createWebviewPanel(
-                    'dsagent.artifactPreview',
-                    artifact.name,
-                    vscode.ViewColumn.Beside,
-                    { enableScripts: false }
-                );
-                panel.webview.html = `<!DOCTYPE html>
-<html><head><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#1e1e1e;}img{max-width:100%;height:auto;}</style></head>
-<body><img src="${fullUrl}" alt="${artifact.name}"></body></html>`;
+                if (artifactPreviewPanel) {
+                    // Reuse the existing panel — just update title and content
+                    artifactPreviewPanel.title = artifact.name;
+                    artifactPreviewPanel.webview.html = getArtifactPreviewHtml(fullUrl, artifact.name);
+                    artifactPreviewPanel.reveal(vscode.ViewColumn.Beside);
+                } else {
+                    artifactPreviewPanel = vscode.window.createWebviewPanel(
+                        'dsagent.artifactPreview',
+                        artifact.name,
+                        vscode.ViewColumn.Beside,
+                        { enableScripts: false }
+                    );
+                    artifactPreviewPanel.webview.html = getArtifactPreviewHtml(fullUrl, artifact.name);
+                    artifactPreviewPanel.onDidDispose(() => {
+                        artifactPreviewPanel = undefined;
+                    });
+                }
             } else {
-                // Open other file types in the external browser
-                vscode.env.openExternal(vscode.Uri.parse(fullUrl));
+                // Download to temp file and open in VS Code
+                try {
+                    const response = await fetch(fullUrl);
+                    if (!response.ok) {
+                        vscode.window.showErrorMessage(`Failed to download artifact: ${response.statusText}`);
+                        return;
+                    }
+                    const buffer = Buffer.from(await response.arrayBuffer());
+                    const tmpDir = path.join(os.tmpdir(), 'dsagent-artifacts');
+                    fs.mkdirSync(tmpDir, { recursive: true });
+                    const tmpFile = path.join(tmpDir, artifact.name);
+                    fs.writeFileSync(tmpFile, buffer);
+                    const uri = vscode.Uri.file(tmpFile);
+                    await vscode.commands.executeCommand('vscode.open', uri);
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : 'Unknown error';
+                    vscode.window.showErrorMessage(`Failed to open artifact: ${msg}`);
+                }
             }
         })
     );
@@ -140,4 +168,10 @@ export function deactivate() {
     if (client) {
         client.disconnect();
     }
+}
+
+function getArtifactPreviewHtml(url: string, name: string): string {
+    return `<!DOCTYPE html>
+<html><head><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#1e1e1e;}img{max-width:100%;height:auto;}</style></head>
+<body><img src="${url}" alt="${name}"></body></html>`;
 }
