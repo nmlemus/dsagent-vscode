@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import * as http from 'http';
 import * as https from 'https';
 import type {
+    Artifact,
     Session,
     ExecutionResult,
     KernelState,
@@ -371,6 +372,32 @@ export class DSAgentClient extends EventEmitter {
             return response.json();
         } catch {
             return { turns: [], total: 0, has_more: false };
+        }
+    }
+
+    // === Artifacts ===
+
+    async listArtifacts(sessionId?: string): Promise<Artifact[]> {
+        const id = sessionId || this.currentSession?.id;
+        if (!id) {
+            return [];
+        }
+
+        try {
+            const response = await this.fetch(`/api/sessions/${id}/artifacts`);
+            if (!response.ok) {
+                return [];
+            }
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                return data;
+            }
+            if (data && data.artifacts) {
+                return data.artifacts;
+            }
+            return [];
+        } catch {
+            return [];
         }
     }
 

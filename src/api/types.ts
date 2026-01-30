@@ -73,6 +73,14 @@ export interface HITLRequest {
     message?: string;
 }
 
+export interface Artifact {
+    name: string;
+    size: number;
+    modified: string;
+    type: string;
+    url: string;
+}
+
 export interface Turn {
     round: number;
     timestamp: string;

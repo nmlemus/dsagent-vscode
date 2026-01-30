@@ -5,6 +5,7 @@ import { DSAgentChatParticipant } from './providers/chatParticipant';
 import { DSAgentNotebookController } from './providers/notebookController';
 import { SessionsTreeProvider } from './providers/sessionsTreeProvider';
 import { VariablesTreeProvider } from './providers/variablesTreeProvider';
+import { ArtifactsTreeProvider } from './providers/artifactsTreeProvider';
 import { StatusBarManager } from './services/statusBar';
 import { NotebookSyncService } from './services/notebookSync';
 import { registerCommands } from './commands';
@@ -79,6 +80,44 @@ export async function activate(context: vscode.ExtensionContext) {
     const variablesProvider = new VariablesTreeProvider(client);
     context.subscriptions.push(
         vscode.window.registerTreeDataProvider('dsagent.variablesView', variablesProvider)
+    );
+
+    // Artifacts tree view (left sidebar)
+    const artifactsProvider = new ArtifactsTreeProvider(client);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('dsagent.artifactsView', artifactsProvider)
+    );
+
+    // Artifacts commands
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.refreshArtifacts', () => {
+            artifactsProvider.refresh();
+        }),
+        vscode.commands.registerCommand('dsagent.openArtifact', async (artifact: { name: string; url: string; type: string }) => {
+            if (!artifact?.url) {
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('dsagent');
+            const serverUrl = config.get<string>('serverUrl', 'http://localhost:8000');
+            const fullUrl = `${serverUrl}${artifact.url}`;
+
+            if (artifact.type === 'image') {
+                // Open image in a webview panel
+                const panel = vscode.window.createWebviewPanel(
+                    'dsagent.artifactPreview',
+                    artifact.name,
+                    vscode.ViewColumn.Beside,
+                    { enableScripts: false }
+                );
+                panel.webview.html = `<!DOCTYPE html>
+<html><head><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#1e1e1e;}img{max-width:100%;height:auto;}</style></head>
+<body><img src="${fullUrl}" alt="${artifact.name}"></body></html>`;
+            } else {
+                // Open other file types in the external browser
+                vscode.env.openExternal(vscode.Uri.parse(fullUrl));
+            }
+        })
     );
 
     // Register all commands

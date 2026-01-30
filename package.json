@@ -31,6 +31,7 @@
     "onCommand:dsagent.startChat",
     "onView:dsagent.sessionsView",
     "onView:dsagent.variablesView",
+    "onView:dsagent.artifactsView",
     "onLanguage:python",
     "onNotebook:jupyter-notebook"
   ],
@@ -78,6 +79,10 @@
         {
           "id": "dsagent.variablesView",
           "name": "Variables"
+        },
+        {
+          "id": "dsagent.artifactsView",
+          "name": "Artifacts"
         }
       ]
     },
@@ -137,6 +142,18 @@
         "icon": "$(sync)"
       },
       {
+        "command": "dsagent.refreshArtifacts",
+        "title": "Refresh Artifacts",
+        "category": "DSAgent",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dsagent.openArtifact",
+        "title": "Open Artifact",
+        "category": "DSAgent",
+        "icon": "$(open-preview)"
+      },
+      {
         "command": "dsagent.approveAction",
         "title": "Approve Action",
         "category": "DSAgent"
@@ -172,6 +189,11 @@
           "command": "dsagent.refreshSessions",
           "when": "view == dsagent.sessionsView",
           "group": "navigation@1"
+        },
+        {
+          "command": "dsagent.refreshArtifacts",
+          "when": "view == dsagent.artifactsView",
+          "group": "navigation@1"
         }
       ]
     },
@@ -179,6 +201,10 @@
       {
         "view": "dsagent.sessionsView",
         "contents": "No sessions yet.\n[Start New Chat](command:dsagent.startChat)"
+      },
+      {
+        "view": "dsagent.artifactsView",
+        "contents": "No artifacts yet. Artifacts will appear here as the agent generates outputs."
       }
     ],
     "configuration": {
