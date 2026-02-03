@@ -1,55 +1,58 @@
-# DSAgent for VS Code
+# DSAgent — AI Data Science Assistant for VS Code
 
-AI-powered data science assistant for Visual Studio Code. Analyze data, create visualizations, and build machine learning models using natural language.
+AI-powered data science agent that integrates directly into VS Code. Analyze data, create visualizations, and build models using natural language.
 
 ## Features
 
-- **Chat Interface**: Natural language conversations with an AI data science agent
-- **Code Execution**: Execute Python code with a persistent Jupyter kernel
-- **Session Management**: Save and resume analysis sessions
-- **Variable Inspector**: View DataFrames and variables in real-time
-- **Context Actions**: Right-click on CSV/data files to analyze them
+- **Dual Chat Interface** — Use the `@dsagent` native chat participant or the custom chat panel
+- **Session Management** — Create, resume, and manage analysis sessions
+- **Live Artifacts** — View generated plots, CSVs, and other outputs in the sidebar
+- **Notebook Sync** — Session notebooks sync with the DSAgent kernel
+- **Variables Explorer** — Inspect DataFrames, variables, and imports in real time
+- **File Attachments** — Upload CSV, Excel, JSON, Parquet, and other data files
+- **Human-in-the-Loop** — Approve, reject, or modify agent actions before execution
 
 ## Requirements
 
-- VS Code 1.85.0 or higher
-- Python 3.9+
-- DSAgent server running (`pip install dsagent && dsagent serve`)
+- A running DSAgent server (`dsagent serve`)
+- VS Code 1.85.0 or later
 
-## Quick Start
+## Getting Started
 
-1. Install the extension
-2. Start the DSAgent server:
+1. Start the server:
    ```bash
-   pip install dsagent
    dsagent serve
    ```
-3. Open the DSAgent panel in VS Code sidebar
-4. Start chatting!
+
+2. Open VS Code — the extension auto-connects to `http://localhost:8000`
+
+3. Open the chat: `Cmd+Shift+P` → **DSAgent: Open Chat**
+
+## Remote Server
+
+To connect to a remote DSAgent server:
+
+1. `Cmd+Shift+P` → **DSAgent: Configure Server Connection**
+2. Enter the server URL (e.g. `https://remote-host:8000`)
+3. Enter the API key (if the server has `DSAGENT_API_KEY` set)
+
+Or configure in settings:
+
+```json
+{
+  "dsagent.serverUrl": "https://remote-host:8000",
+  "dsagent.apiKey": "your-api-key"
+}
+```
 
 ## Extension Settings
 
-- `dsagent.serverUrl`: DSAgent server URL (default: `http://localhost:8000`)
-- `dsagent.autoConnect`: Auto-connect on startup (default: `true`)
-- `dsagent.model`: Default LLM model (default: `gpt-4o`)
-
-## Development
-
-See [SETUP.md](./SETUP.md) for detailed development instructions.
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Watch mode
-npm run watch
-
-# Package extension
-npm run package
-```
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `dsagent.serverUrl` | `http://localhost:8000` | DSAgent server URL |
+| `dsagent.apiKey` | | API key for remote server authentication |
+| `dsagent.autoConnect` | `true` | Auto-connect on startup |
+| `dsagent.model` | `gpt-4o` | Default LLM model |
 
 ## License
 
