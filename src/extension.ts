@@ -201,6 +201,168 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.registerTreeDataProvider('dsagent.variablesView', variablesProvider)
     );
 
+    // Variables commands
+    let dataFramePreviewPanel: vscode.WebviewPanel | undefined;
+
+    context.subscriptions.push(
+        // Preview DataFrame — execute df.head(20).to_html() and show in webview
+        vscode.commands.registerCommand('dsagent.previewDataFrame', async (name: string) => {
+            if (!client.session) {
+                vscode.window.showWarningMessage('No active session');
+                return;
+            }
+            try {
+                const result = await client.executeCode(
+                    `${name}.head(20).to_html(classes='dataframe', border=0)`
+                );
+                const html = (result as any).stdout || result.output || '';
+                if (!html) {
+                    vscode.window.showWarningMessage('No data returned');
+                    return;
+                }
+                if (dataFramePreviewPanel) {
+                    dataFramePreviewPanel.title = `Preview: ${name}`;
+                    dataFramePreviewPanel.webview.html = getDataFramePreviewHtml(name, html);
+                    dataFramePreviewPanel.reveal(vscode.ViewColumn.Beside);
+                } else {
+                    dataFramePreviewPanel = vscode.window.createWebviewPanel(
+                        'dsagent.dataFramePreview',
+                        `Preview: ${name}`,
+                        vscode.ViewColumn.Beside,
+                        { enableScripts: false }
+                    );
+                    dataFramePreviewPanel.webview.html = getDataFramePreviewHtml(name, html);
+                    dataFramePreviewPanel.onDidDispose(() => {
+                        dataFramePreviewPanel = undefined;
+                    });
+                }
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to preview DataFrame: ${msg}`);
+            }
+        }),
+
+        // Inspect variable — execute repr(var) and show in output channel
+        vscode.commands.registerCommand('dsagent.inspectVariable', async (name: string) => {
+            if (!client.session) {
+                vscode.window.showWarningMessage('No active session');
+                return;
+            }
+            try {
+                const result = await client.executeCode(`print(repr(${name}))`);
+                const output = (result as any).stdout || result.output || '';
+                const channel = vscode.window.createOutputChannel(`DSAgent: ${name}`, 'python');
+                channel.replace(output);
+                channel.show(true);
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to inspect variable: ${msg}`);
+            }
+        }),
+
+        // Copy variable name to clipboard
+        vscode.commands.registerCommand('dsagent.copyVariableName', async (item: { label: string }) => {
+            const name = typeof item === 'string' ? item : item?.label;
+            if (name) {
+                await vscode.env.clipboard.writeText(name);
+                vscode.window.showInformationMessage(`Copied "${name}" to clipboard`);
+            }
+        }),
+
+        // Describe DataFrame — execute df.describe() and show in output channel
+        vscode.commands.registerCommand('dsagent.describeDataFrame', async (item: { label: string }) => {
+            const name = typeof item === 'string' ? item : item?.label;
+            if (!name || !client.session) {
+                return;
+            }
+            try {
+                const result = await client.executeCode(`print(${name}.describe().to_string())`);
+                const output = (result as any).stdout || result.output || '';
+                const channel = vscode.window.createOutputChannel(`DSAgent: ${name}.describe()`, 'python');
+                channel.replace(output);
+                channel.show(true);
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to describe DataFrame: ${msg}`);
+            }
+        }),
+
+        // DataFrame info — execute df.info() and show in output channel
+        vscode.commands.registerCommand('dsagent.dataFrameInfo', async (item: { label: string }) => {
+            const name = typeof item === 'string' ? item : item?.label;
+            if (!name || !client.session) {
+                return;
+            }
+            try {
+                const result = await client.executeCode(
+                    `import io as _io; _buf = _io.StringIO(); ${name}.info(buf=_buf); print(_buf.getvalue())`
+                );
+                const output = (result as any).stdout || result.output || '';
+                const channel = vscode.window.createOutputChannel(`DSAgent: ${name}.info()`, 'python');
+                channel.replace(output);
+                channel.show(true);
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to get DataFrame info: ${msg}`);
+            }
+        }),
+
+        // Quick plot — execute a histogram and show result image
+        vscode.commands.registerCommand('dsagent.plotVariable', async (item: { label: string }) => {
+            const name = typeof item === 'string' ? item : item?.label;
+            if (!name || !client.session) {
+                return;
+            }
+            try {
+                const result = await client.executeCode(
+                    `import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\n${name}.hist(figsize=(10,6))\nplt.title('${name} — Distribution')\nplt.tight_layout()\nplt.savefig('/tmp/_dsagent_quickplot.png', dpi=100)\nplt.close()\nprint('ok')`
+                );
+                const output = (result as any).stdout || result.output || '';
+                if (output.includes('ok')) {
+                    // Fetch the image via artifacts or temp file
+                    const cfg = vscode.workspace.getConfiguration('dsagent');
+                    const serverUrl = cfg.get<string>('serverUrl', 'http://localhost:8000');
+                    const imgResult = await client.executeCode(
+                        `import base64\nwith open('/tmp/_dsagent_quickplot.png','rb') as f: print(base64.b64encode(f.read()).decode())`
+                    );
+                    const b64 = ((imgResult as any).stdout || imgResult.output || '').trim();
+                    if (b64) {
+                        if (dataFramePreviewPanel) {
+                            dataFramePreviewPanel.title = `Plot: ${name}`;
+                            dataFramePreviewPanel.webview.html = getPlotPreviewHtml(name, b64);
+                            dataFramePreviewPanel.reveal(vscode.ViewColumn.Beside);
+                        } else {
+                            dataFramePreviewPanel = vscode.window.createWebviewPanel(
+                                'dsagent.dataFramePreview',
+                                `Plot: ${name}`,
+                                vscode.ViewColumn.Beside,
+                                { enableScripts: false }
+                            );
+                            dataFramePreviewPanel.webview.html = getPlotPreviewHtml(name, b64);
+                            dataFramePreviewPanel.onDidDispose(() => {
+                                dataFramePreviewPanel = undefined;
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to plot: ${msg}`);
+            }
+        }),
+
+        // Analyze with DSAgent — send to chat
+        vscode.commands.registerCommand('dsagent.analyzeVariable', async (item: { label: string; itemType?: string }) => {
+            const name = typeof item === 'string' ? item : item?.label;
+            if (!name) {
+                return;
+            }
+            const type = item?.itemType === 'dataframe' ? 'dataframe' : 'variable';
+            chatPanel.show();
+            chatPanel.sendAnalysisRequest(name, type);
+        })
+    );
+
     // Artifacts tree view (left sidebar)
     const artifactsProvider = new ArtifactsTreeProvider(client);
     context.subscriptions.push(
@@ -296,4 +458,35 @@ function getArtifactPreviewHtml(url: string, name: string): string {
     return `<!DOCTYPE html>
 <html><head><style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#1e1e1e;}img{max-width:100%;height:auto;}</style></head>
 <body><img src="${url}" alt="${name}"></body></html>`;
+}
+
+function getDataFramePreviewHtml(name: string, tableHtml: string): string {
+    return `<!DOCTYPE html>
+<html><head><style>
+body { margin: 0; padding: 16px; background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-editor-foreground, #ccc); font-family: var(--vscode-font-family, monospace); font-size: 13px; }
+h2 { margin: 0 0 12px 0; font-size: 15px; font-weight: 500; }
+table.dataframe { border-collapse: collapse; width: 100%; }
+table.dataframe th, table.dataframe td { padding: 6px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+table.dataframe th { background: rgba(255,255,255,0.05); font-weight: 600; position: sticky; top: 0; }
+table.dataframe tr:hover td { background: rgba(255,255,255,0.04); }
+.note { margin-top: 12px; font-size: 11px; opacity: 0.6; }
+</style></head>
+<body>
+<h2>${name}</h2>
+${tableHtml}
+<p class="note">Showing first 20 rows</p>
+</body></html>`;
+}
+
+function getPlotPreviewHtml(name: string, base64: string): string {
+    return `<!DOCTYPE html>
+<html><head><style>
+body { margin: 0; display: flex; flex-direction: column; align-items: center; padding: 16px; background: var(--vscode-editor-background, #1e1e1e); color: var(--vscode-editor-foreground, #ccc); }
+h2 { margin: 0 0 12px 0; font-size: 15px; font-weight: 500; }
+img { max-width: 100%; height: auto; }
+</style></head>
+<body>
+<h2>${name}</h2>
+<img src="data:image/png;base64,${base64}" alt="${name}">
+</body></html>`;
 }

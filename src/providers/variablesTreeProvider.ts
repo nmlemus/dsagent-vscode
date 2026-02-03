@@ -206,6 +206,21 @@ export class VariableItem extends vscode.TreeItem {
         if (description) {
             this.description = description;
         }
+
+        // Click to preview dataframes or inspect variables
+        if (itemType === 'dataframe') {
+            this.command = {
+                command: 'dsagent.previewDataFrame',
+                title: 'Preview DataFrame',
+                arguments: [label],
+            };
+        } else if (itemType === 'variable') {
+            this.command = {
+                command: 'dsagent.inspectVariable',
+                title: 'Inspect Variable',
+                arguments: [label],
+            };
+        }
     }
 
     private getIcon(): vscode.ThemeIcon {
