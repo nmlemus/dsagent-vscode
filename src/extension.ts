@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DSAgentClient } from './api/client';
+import type { HITLMode } from './api/types';
 import { ChatPanelProvider } from './providers/chatViewProvider';
 import { DSAgentChatParticipant } from './providers/chatParticipant';
 import { DSAgentNotebookController } from './providers/notebookController';
@@ -78,7 +79,9 @@ export async function activate(context: vscode.ExtensionContext) {
             if (name === undefined) {
                 return; // Cancelled
             }
-            chatPanel.startNewChat(name || undefined);
+            const hitlMode = vscode.workspace.getConfiguration('dsagent')
+                .get<HITLMode>('hitlMode', 'none');
+            chatPanel.startNewChat(name || undefined, hitlMode);
         })
     );
 
@@ -119,6 +122,52 @@ export async function activate(context: vscode.ExtensionContext) {
             await cfg.update('serverUrl', url, vscode.ConfigurationTarget.Global);
             await cfg.update('apiKey', key, vscode.ConfigurationTarget.Global);
             // The onDidChangeConfiguration listener handles reconnection
+        })
+    );
+
+    // Set HITL mode command — quick pick to change mode for the active session
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.setHitlMode', async () => {
+            const modes: Array<{ label: string; description: string; mode: HITLMode }> = [
+                { label: '$(circle-slash) None', description: 'Agent runs autonomously', mode: 'none' },
+                { label: '$(checklist) Plan Only', description: 'Approve before executing a plan', mode: 'plan_only' },
+                { label: '$(shield) Full', description: 'Approve every plan and code execution', mode: 'full' },
+                { label: '$(comment-discussion) Plan + Answer', description: 'Approve plans and final answers', mode: 'plan_and_answer' },
+                { label: '$(warning) On Error', description: 'Approve only when errors occur', mode: 'on_error' },
+            ];
+
+            const currentMode = client.session?.hitl_mode || 'none';
+            const items = modes.map(m => ({
+                ...m,
+                picked: m.mode === currentMode,
+                description: m.mode === currentMode ? `${m.description} (current)` : m.description,
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+                title: 'Set Human-in-the-Loop Mode',
+                placeHolder: 'Choose when the agent should pause for approval',
+            });
+
+            if (!selected) {
+                return;
+            }
+
+            if (client.session) {
+                try {
+                    await client.updateSession({ hitl_mode: selected.mode });
+                    vscode.window.showInformationMessage(`HITL mode set to: ${selected.label.replace(/\$\([^)]+\)\s*/, '')}`);
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : 'Unknown error';
+                    vscode.window.showErrorMessage(`Failed to update HITL mode: ${msg}`);
+                }
+            } else {
+                // No active session — update the setting for future sessions
+                await vscode.workspace.getConfiguration('dsagent')
+                    .update('hitlMode', selected.mode, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage(
+                    `HITL mode for new sessions set to: ${selected.label.replace(/\$\([^)]+\)\s*/, '')}`
+                );
+            }
         })
     );
 

@@ -215,6 +215,18 @@
         "command": "dsagent.rejectAction",
         "title": "Reject Action",
         "category": "DSAgent"
+      },
+      {
+        "command": "dsagent.setHitlMode",
+        "title": "Set Human-in-the-Loop Mode",
+        "category": "DSAgent",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "dsagent.refreshVariables",
+        "title": "Refresh Variables",
+        "category": "DSAgent",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -341,10 +353,31 @@
           ],
           "description": "Default LLM model to use"
         },
+        "dsagent.hitlMode": {
+          "type": "string",
+          "default": "none",
+          "enum": [
+            "none",
+            "plan_only",
+            "full",
+            "plan_and_answer",
+            "on_error"
+          ],
+          "enumDescriptions": [
+            "No human approval required — agent runs autonomously",
+            "Require approval before executing a plan",
+            "Require approval for every plan and code execution",
+            "Require approval for plans and final answers",
+            "Require approval only when errors occur"
+          ],
+          "description": "Human-in-the-Loop mode for new sessions. Controls when the agent pauses for approval.",
+          "order": 4
+        },
         "dsagent.showThinking": {
           "type": "boolean",
           "default": true,
-          "description": "Show thinking indicator while agent is processing"
+          "description": "Show thinking indicator while agent is processing",
+          "order": 5
         }
       }
     }

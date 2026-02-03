@@ -1,8 +1,18 @@
 import * as vscode from 'vscode';
 import { DSAgentClient } from '../api/client';
+import type { HITLMode } from '../api/types';
+
+const HITL_LABELS: Record<HITLMode, string> = {
+    none: 'Off',
+    plan_only: 'Plan',
+    full: 'Full',
+    plan_and_answer: 'Plan+Answer',
+    on_error: 'On Error',
+};
 
 export class StatusBarManager implements vscode.Disposable {
     private statusBarItem: vscode.StatusBarItem;
+    private hitlBarItem: vscode.StatusBarItem;
     private client: DSAgentClient;
     private disposables: vscode.Disposable[] = [];
 
@@ -14,6 +24,12 @@ export class StatusBarManager implements vscode.Disposable {
             100
         );
         this.statusBarItem.command = 'dsagent.connectServer';
+
+        this.hitlBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Right,
+            99
+        );
+        this.hitlBarItem.command = 'dsagent.setHitlMode';
 
         this.setupEventListeners();
         this.updateStatus('disconnected');
@@ -27,10 +43,24 @@ export class StatusBarManager implements vscode.Disposable {
 
         this.client.on('connected', () => {
             this.updateStatus('session');
+            this.updateHitlBar();
+        });
+
+        this.client.on('sessionCreated', () => {
+            this.updateHitlBar();
+        });
+
+        this.client.on('sessionResumed', () => {
+            this.updateHitlBar();
+        });
+
+        this.client.on('sessionUpdated', () => {
+            this.updateHitlBar();
         });
 
         this.client.on('disconnected', () => {
             this.updateStatus('disconnected');
+            this.hitlBarItem.hide();
         });
 
         this.client.on('reconnecting', (attempt: number) => {
@@ -52,6 +82,30 @@ export class StatusBarManager implements vscode.Disposable {
         this.client.on('error', () => {
             this.updateStatus('error');
         });
+
+        this.client.on('hitl_request', () => {
+            this.hitlBarItem.text = '$(bell) HITL: Awaiting';
+            this.hitlBarItem.backgroundColor = new vscode.ThemeColor(
+                'statusBarItem.warningBackground'
+            );
+        });
+    }
+
+    private updateHitlBar(): void {
+        const session = this.client.session;
+        if (!session) {
+            this.hitlBarItem.hide();
+            return;
+        }
+
+        const mode = session.hitl_mode || 'none';
+        const label = HITL_LABELS[mode] || mode;
+        this.hitlBarItem.text = `$(shield) HITL: ${label}`;
+        this.hitlBarItem.tooltip = `Human-in-the-Loop: ${label}\nClick to change`;
+        this.hitlBarItem.backgroundColor = mode === 'none'
+            ? undefined
+            : new vscode.ThemeColor('statusBarItem.prominentBackground');
+        this.hitlBarItem.show();
     }
 
     private getServerUrl(): string {
@@ -114,6 +168,7 @@ export class StatusBarManager implements vscode.Disposable {
 
     dispose(): void {
         this.statusBarItem.dispose();
+        this.hitlBarItem.dispose();
         this.disposables.forEach(d => d.dispose());
     }
 }

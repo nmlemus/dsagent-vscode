@@ -5,6 +5,8 @@ import type {
     Artifact,
     Session,
     ExecutionResult,
+    HITLMode,
+    HITLStatus,
     KernelState,
     PlanState,
     Turn
@@ -72,14 +74,14 @@ export class DSAgentClient extends EventEmitter {
 
     // === Session Management ===
 
-    async createSession(name?: string, model?: string): Promise<Session> {
+    async createSession(name?: string, model?: string, hitlMode?: HITLMode): Promise<Session> {
         const response = await this.fetch('/api/sessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ...(name && { name }),
                 model: model || 'gpt-4o',
-                hitl_mode: 'none'
+                hitl_mode: hitlMode || 'none'
             }),
         });
 
@@ -323,7 +325,9 @@ export class DSAgentClient extends EventEmitter {
                     request_type: data.request_type,
                     plan: data.plan,
                     code: data.code,
-                    error: data.error
+                    error: data.error,
+                    answer: data.answer,
+                    message: data.message
                 });
                 break;
         }
@@ -334,19 +338,41 @@ export class DSAgentClient extends EventEmitter {
 
     // === HITL Actions ===
 
-    async approveAction(): Promise<void> {
+    async getHitlStatus(): Promise<HITLStatus | null> {
+        if (!this.currentSession) {
+            return null;
+        }
+
+        try {
+            const response = await this.fetch(
+                `/api/sessions/${this.currentSession.id}/hitl/status`
+            );
+            if (!response.ok) {
+                return null;
+            }
+            return response.json();
+        } catch {
+            return null;
+        }
+    }
+
+    async approveAction(feedback?: string): Promise<void> {
         if (!this.currentSession) return;
 
         await this.fetch(`/api/sessions/${this.currentSession.id}/hitl/approve`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ feedback }),
         });
     }
 
-    async rejectAction(): Promise<void> {
+    async rejectAction(reason?: string): Promise<void> {
         if (!this.currentSession) return;
 
         await this.fetch(`/api/sessions/${this.currentSession.id}/hitl/reject`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason }),
         });
     }
 
@@ -362,6 +388,30 @@ export class DSAgentClient extends EventEmitter {
                 modified_plan: modification
             }),
         });
+    }
+
+    // === Session Update ===
+
+    async updateSession(data: { name?: string; hitl_mode?: HITLMode }): Promise<Session> {
+        if (!this.currentSession) {
+            throw new Error('No active session');
+        }
+
+        const response = await this.fetch(`/api/sessions/${this.currentSession.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to update session: ${error}`);
+        }
+
+        const session: Session = await response.json();
+        this.currentSession = session;
+        this.emit('sessionUpdated', session);
+        return session;
     }
 
     // === History / Turns ===

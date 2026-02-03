@@ -9,6 +9,7 @@ export interface Session {
     workspace_path?: string | null;
     task?: string;
     model?: string;
+    hitl_mode?: HITLMode;
 }
 
 export interface ChatMessage {
@@ -70,10 +71,29 @@ export interface KernelState {
     imports: string[];
 }
 
+// HITL (Human-in-the-Loop)
+
+export type HITLMode = 'none' | 'plan_only' | 'full' | 'plan_and_answer' | 'on_error';
+
+export type HITLAwaitingType = 'plan' | 'code' | 'answer' | 'error' | null;
+
+export interface HITLStatus {
+    enabled: boolean;
+    mode: HITLMode;
+    awaiting_feedback: boolean;
+    awaiting_type: HITLAwaitingType;
+    pending_plan: PlanState | null;
+    pending_code: string | null;
+    pending_error: string | null;
+    pending_answer: string | null;
+}
+
 export interface HITLRequest {
-    type: 'plan' | 'code' | 'answer';
+    type: 'plan' | 'code' | 'answer' | 'error';
     plan?: PlanState;
     code?: string;
+    error?: string;
+    answer?: string;
     message?: string;
 }
 

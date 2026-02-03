@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { DSAgentClient } from '../api/client';
 import { getNonce } from '../utils/nonce';
-import type { AgentEvent, ChatMessage, PlanState, Turn } from '../api/types';
+import type { AgentEvent, ChatMessage, HITLMode, PlanState, Turn } from '../api/types';
 
 export class ChatPanelProvider {
     private _panel?: vscode.WebviewPanel;
@@ -60,8 +60,16 @@ export class ChatPanelProvider {
             this.postMessage({ type: 'complete' });
         });
 
-        this.client.on('hitl_request', (event: AgentEvent) => {
-            this.postMessage({ type: 'hitlRequest', request: event });
+        this.client.on('hitl_request', (event: Record<string, unknown>) => {
+            this.postMessage({
+                type: 'hitlRequest',
+                awaitingType: event.request_type || 'plan',
+                plan: event.plan || null,
+                code: event.code || null,
+                error: event.error || null,
+                answer: event.answer || null,
+                message: event.message || null,
+            });
         });
 
         this.client.on('connected', (sessionId: string) => {
@@ -112,10 +120,10 @@ export class ChatPanelProvider {
                     await this.handleSendMessage(data.content);
                     break;
                 case 'approve':
-                    this.client.approveAction();
+                    this.client.approveAction(data.feedback);
                     break;
                 case 'reject':
-                    this.client.rejectAction();
+                    this.client.rejectAction(data.reason);
                     break;
                 case 'modify':
                     this.client.respondAction('modify', data.message, data.modification);
@@ -293,13 +301,13 @@ export class ChatPanelProvider {
         this._panel?.webview.postMessage(message);
     }
 
-    public async startNewChat(name?: string): Promise<void> {
+    public async startNewChat(name?: string, hitlMode?: HITLMode): Promise<void> {
         this.messages = [];
         this.currentPlan = null;
         this.isThinking = false;
 
         try {
-            await this.client.createSession(name);
+            await this.client.createSession(name, undefined, hitlMode);
             if (this._panel) {
                 this.postMessage({ type: 'newChat' });
             } else {

@@ -41,12 +41,24 @@ interface ExecutionResultData {
   images?: Array<{ format?: string; mime?: string; data: string }>;
 }
 
+type HITLAwaitingType = 'plan' | 'code' | 'answer' | 'error' | null;
+
+interface HITLRequestData {
+  awaitingType: HITLAwaitingType;
+  plan?: Plan | null;
+  code?: string | null;
+  error?: string | null;
+  answer?: string | null;
+  message?: string | null;
+}
+
 function App() {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
   const [serverAvailable, setServerAvailable] = useState(true);
-  const [hitlRequest, setHitlRequest] = useState<boolean>(false);
+  const [hitlRequest, setHitlRequest] = useState<HITLRequestData | null>(null);
+  const [hitlFeedback, setHitlFeedback] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<{ name: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -210,7 +222,15 @@ function App() {
           break;
 
         case 'hitlRequest':
-          setHitlRequest(true);
+          setHitlRequest({
+            awaitingType: message.awaitingType || 'plan',
+            plan: message.plan || null,
+            code: message.code || null,
+            error: message.error || null,
+            answer: message.answer || null,
+            message: message.message || null,
+          });
+          setHitlFeedback('');
           break;
 
         case 'connected':
@@ -228,7 +248,7 @@ function App() {
           const historyMessages = (message.messages || []) as ChatMessageData[];
           setMessages(historyMessages);
           setIsStreaming(false);
-          setHitlRequest(false);
+          setHitlRequest(null);
           currentAssistantIdRef.current = null;
           lastCodeMessageIdRef.current = null;
           hasAddedCodeRef.current = false;
@@ -244,7 +264,7 @@ function App() {
           setMessages([]);
           setCurrentPlan(null);
           setIsStreaming(false);
-          setHitlRequest(false);
+          setHitlRequest(null);
           setAttachedFiles([]);
           setIsUploading(false);
           currentAssistantIdRef.current = null;
@@ -301,13 +321,26 @@ function App() {
   };
 
   const handleApprove = () => {
-    vscode.postMessage({ type: 'approve' });
-    setHitlRequest(false);
+    vscode.postMessage({ type: 'approve', feedback: hitlFeedback || undefined });
+    setHitlRequest(null);
+    setHitlFeedback('');
   };
 
   const handleReject = () => {
-    vscode.postMessage({ type: 'reject' });
-    setHitlRequest(false);
+    vscode.postMessage({ type: 'reject', reason: hitlFeedback || undefined });
+    setHitlRequest(null);
+    setHitlFeedback('');
+  };
+
+  const handleModify = () => {
+    if (!hitlFeedback.trim()) return;
+    vscode.postMessage({
+      type: 'modify',
+      message: hitlFeedback,
+      modification: hitlFeedback,
+    });
+    setHitlRequest(null);
+    setHitlFeedback('');
   };
 
   // Render message based on type
@@ -373,11 +406,67 @@ function App() {
 
         {hitlRequest && (
           <div className="hitl-request">
-            <p>The agent is requesting approval to proceed.</p>
+            <div className="hitl-header">
+              <span className="hitl-icon">
+                {hitlRequest.awaitingType === 'plan' && '$(checklist)'}
+                {hitlRequest.awaitingType === 'code' && '$(code)'}
+                {hitlRequest.awaitingType === 'answer' && '$(comment-discussion)'}
+                {hitlRequest.awaitingType === 'error' && '$(warning)'}
+              </span>
+              <span className="hitl-title">
+                {hitlRequest.awaitingType === 'plan' && 'Plan Approval Required'}
+                {hitlRequest.awaitingType === 'code' && 'Code Approval Required'}
+                {hitlRequest.awaitingType === 'answer' && 'Answer Approval Required'}
+                {hitlRequest.awaitingType === 'error' && 'Error — Action Required'}
+                {!hitlRequest.awaitingType && 'Approval Required'}
+              </span>
+            </div>
+
+            {hitlRequest.message && (
+              <p className="hitl-message">{hitlRequest.message}</p>
+            )}
+
+            {hitlRequest.awaitingType === 'plan' && hitlRequest.plan && (
+              <div className="hitl-content">
+                <PlanView plan={hitlRequest.plan} />
+              </div>
+            )}
+
+            {hitlRequest.awaitingType === 'code' && hitlRequest.code && (
+              <div className="hitl-content">
+                <CodeBlock code={hitlRequest.code} language="python" status="idle" />
+              </div>
+            )}
+
+            {hitlRequest.awaitingType === 'answer' && hitlRequest.answer && (
+              <div className="hitl-content hitl-answer">
+                <p>{hitlRequest.answer}</p>
+              </div>
+            )}
+
+            {hitlRequest.awaitingType === 'error' && hitlRequest.error && (
+              <div className="hitl-content hitl-error">
+                <pre>{hitlRequest.error}</pre>
+              </div>
+            )}
+
+            <textarea
+              className="hitl-feedback"
+              placeholder="Optional feedback or modifications..."
+              value={hitlFeedback}
+              onChange={(e) => setHitlFeedback(e.target.value)}
+              rows={2}
+            />
+
             <div className="hitl-actions">
               <button className="approve" onClick={handleApprove}>
                 Approve
               </button>
+              {hitlFeedback.trim() && (
+                <button className="modify" onClick={handleModify}>
+                  Modify
+                </button>
+              )}
               <button className="reject" onClick={handleReject}>
                 Reject
               </button>

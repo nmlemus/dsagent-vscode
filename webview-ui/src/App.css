@@ -454,15 +454,87 @@ body {
 
 /* HITL Request */
 .hitl-request {
-  padding: 12px;
+  padding: 14px;
   background-color: var(--vscode-inputValidation-infoBackground);
   border: 1px solid var(--vscode-inputValidation-infoBorder);
   border-radius: 8px;
   margin-left: 38px;
 }
 
-.hitl-request p {
+.hitl-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: calc(var(--vscode-font-size) + 1px);
+}
+
+.hitl-icon {
+  opacity: 0.8;
+}
+
+.hitl-message {
+  margin: 0 0 10px 0;
+  font-size: var(--vscode-font-size);
+  opacity: 0.9;
+}
+
+.hitl-content {
   margin-bottom: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hitl-answer {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.hitl-answer p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hitl-error {
+  padding: 10px 12px;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.2);
+  border-radius: 6px;
+}
+
+.hitl-error pre {
+  margin: 0;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.hitl-feedback {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  resize: vertical;
+}
+
+.hitl-feedback:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.hitl-feedback::placeholder {
+  color: var(--vscode-input-placeholderForeground);
 }
 
 .hitl-actions {
@@ -488,13 +560,24 @@ body {
   background-color: var(--vscode-button-hoverBackground);
 }
 
-.hitl-actions .reject {
+.hitl-actions .modify {
   background-color: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, transparent);
+}
+
+.hitl-actions .modify:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.hitl-actions .reject {
+  background-color: transparent;
+  color: var(--vscode-errorForeground, #f48771);
+  border: 1px solid var(--vscode-errorForeground, #f48771);
 }
 
 .hitl-actions .reject:hover {
-  background-color: var(--vscode-button-secondaryHoverBackground);
+  background-color: rgba(255, 80, 80, 0.1);
 }
 
 /* Connection Status */
