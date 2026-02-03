@@ -1,8 +1,12 @@
 export interface Session {
     id: string;
+    name?: string;
     created_at: string;
     updated_at: string;
     status: 'active' | 'completed' | 'error';
+    message_count?: number;
+    kernel_variables?: number;
+    workspace_path?: string | null;
     task?: string;
     model?: string;
 }

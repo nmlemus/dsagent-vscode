@@ -77,11 +77,10 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<SessionItem
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 
-        if (session.task) {
-            const truncatedTask = session.task.length > 30
-                ? session.task.substring(0, 30) + '...'
-                : session.task;
-            return `${truncatedTask} (${dateStr} ${timeStr})`;
+        const label = session.name || session.task;
+        if (label) {
+            const truncated = label.length > 30 ? label.substring(0, 30) + '...' : label;
+            return `${truncated} (${dateStr} ${timeStr})`;
         }
 
         return `Session ${session.id.substring(0, 8)} (${dateStr} ${timeStr})`;
@@ -167,16 +166,21 @@ export class SessionItem extends vscode.TreeItem {
 
         const lines = [
             `ID: ${this.session.id}`,
-            `Status: ${this.session.status}`,
-            `Created: ${new Date(this.session.created_at).toLocaleString()}`,
         ];
+
+        if (this.session.name) {
+            lines.push(`Name: ${this.session.name}`);
+        }
+
+        lines.push(`Status: ${this.session.status}`);
+        lines.push(`Created: ${new Date(this.session.created_at).toLocaleString()}`);
+
+        if (this.session.message_count !== undefined) {
+            lines.push(`Messages: ${this.session.message_count}`);
+        }
 
         if (this.session.model) {
             lines.push(`Model: ${this.session.model}`);
-        }
-
-        if (this.session.task) {
-            lines.push(`Task: ${this.session.task}`);
         }
 
         if (this.isActive) {
