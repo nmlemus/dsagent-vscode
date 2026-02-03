@@ -54,35 +54,42 @@ export class StatusBarManager implements vscode.Disposable {
         });
     }
 
+    private getServerUrl(): string {
+        return this.client.getBaseUrl();
+    }
+
     private updateStatus(
         status: 'disconnected' | 'connected' | 'session' | 'reconnecting' | 'thinking' | 'error',
         attempt?: number
     ): void {
+        const url = this.getServerUrl();
+
         switch (status) {
             case 'disconnected':
                 this.statusBarItem.text = '$(debug-disconnect) DSAgent';
-                this.statusBarItem.tooltip = 'Click to connect to DSAgent server';
+                this.statusBarItem.tooltip = `Disconnected from ${url}\nClick to connect`;
                 this.statusBarItem.backgroundColor = undefined;
                 this.statusBarItem.command = 'dsagent.connectServer';
                 break;
 
             case 'connected':
                 this.statusBarItem.text = '$(plug) DSAgent';
-                this.statusBarItem.tooltip = 'Connected to server. Click to start chat.';
+                this.statusBarItem.tooltip = `Connected to ${url}\nClick to start chat`;
                 this.statusBarItem.backgroundColor = undefined;
                 this.statusBarItem.command = 'dsagent.startChat';
                 break;
 
             case 'session':
+                const sessionId = this.client.session?.id;
                 this.statusBarItem.text = '$(comment-discussion) DSAgent';
-                this.statusBarItem.tooltip = 'Active session. Click to open chat.';
+                this.statusBarItem.tooltip = `Server: ${url}\nSession: ${sessionId || 'active'}\nClick to open chat`;
                 this.statusBarItem.backgroundColor = undefined;
-                this.statusBarItem.command = 'dsagent.startChat';
+                this.statusBarItem.command = 'dsagent.openChat';
                 break;
 
             case 'reconnecting':
                 this.statusBarItem.text = `$(sync~spin) DSAgent (${attempt})`;
-                this.statusBarItem.tooltip = `Reconnecting... Attempt ${attempt}`;
+                this.statusBarItem.tooltip = `Reconnecting to ${url}... Attempt ${attempt}`;
                 this.statusBarItem.backgroundColor = new vscode.ThemeColor(
                     'statusBarItem.warningBackground'
                 );
@@ -90,13 +97,13 @@ export class StatusBarManager implements vscode.Disposable {
 
             case 'thinking':
                 this.statusBarItem.text = '$(loading~spin) DSAgent';
-                this.statusBarItem.tooltip = 'Agent is thinking...';
+                this.statusBarItem.tooltip = `Agent is thinking...\nServer: ${url}`;
                 this.statusBarItem.backgroundColor = undefined;
                 break;
 
             case 'error':
                 this.statusBarItem.text = '$(error) DSAgent';
-                this.statusBarItem.tooltip = 'Connection error. Click to retry.';
+                this.statusBarItem.tooltip = `Connection error — ${url}\nClick to retry`;
                 this.statusBarItem.backgroundColor = new vscode.ThemeColor(
                     'statusBarItem.errorBackground'
                 );

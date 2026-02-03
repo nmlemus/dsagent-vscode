@@ -569,8 +569,8 @@ body {
   cursor: not-allowed;
 }
 
-/* Attach Button */
-.attach-button {
+/* Attach Button — needs .chat-input-wrapper prefix to beat generic button styles */
+.chat-input-wrapper .attach-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -587,12 +587,12 @@ body {
   transition: background-color 0.15s, border-color 0.15s;
 }
 
-.attach-button:hover:not(:disabled) {
+.chat-input-wrapper .attach-button:hover:not(:disabled) {
   background-color: var(--vscode-button-secondaryHoverBackground);
   border-color: var(--vscode-focusBorder);
 }
 
-.attach-button:disabled {
+.chat-input-wrapper .attach-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

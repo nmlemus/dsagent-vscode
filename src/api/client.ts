@@ -22,7 +22,15 @@ export class DSAgentClient extends EventEmitter {
         this.baseUrl = baseUrl;
     }
 
-    setApiKey(key: string): void {
+    setBaseUrl(url: string): void {
+        this.baseUrl = url;
+    }
+
+    getBaseUrl(): string {
+        return this.baseUrl;
+    }
+
+    setApiKey(key: string | null): void {
         this.apiKey = key;
     }
 

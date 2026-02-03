@@ -24,9 +24,37 @@ export async function activate(context: vscode.ExtensionContext) {
     // Get configuration
     const config = vscode.workspace.getConfiguration('dsagent');
     const serverUrl = config.get<string>('serverUrl', 'http://localhost:8000');
+    const apiKey = config.get<string>('apiKey', '');
 
     // Initialize API client
     client = new DSAgentClient(serverUrl);
+    if (apiKey) {
+        client.setApiKey(apiKey);
+    }
+
+    // React to settings changes at runtime
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('dsagent.serverUrl') || e.affectsConfiguration('dsagent.apiKey')) {
+                const updated = vscode.workspace.getConfiguration('dsagent');
+                const newUrl = updated.get<string>('serverUrl', 'http://localhost:8000');
+                const newKey = updated.get<string>('apiKey', '');
+
+                client.disconnect();
+                client.setBaseUrl(newUrl);
+                client.setApiKey(newKey || null);
+
+                // Auto-reconnect with new settings
+                client.connect().then(connected => {
+                    if (connected) {
+                        vscode.window.showInformationMessage(`DSAgent: Connected to ${newUrl}`);
+                    } else {
+                        vscode.window.showWarningMessage(`DSAgent: Could not connect to ${newUrl}`);
+                    }
+                });
+            }
+        })
+    );
 
     // Status bar
     statusBar = new StatusBarManager(client);
@@ -43,6 +71,46 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('dsagent.startChat', () => {
             chatPanel.startNewChat();
+        })
+    );
+
+    // Configure server command — quick input for URL + API key
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.configureServer', async () => {
+            const cfg = vscode.workspace.getConfiguration('dsagent');
+
+            const url = await vscode.window.showInputBox({
+                title: 'DSAgent Server URL',
+                prompt: 'Enter the server URL (e.g. http://localhost:8000 or https://remote-host:8000)',
+                value: cfg.get<string>('serverUrl', 'http://localhost:8000'),
+                validateInput: (value) => {
+                    try {
+                        new URL(value);
+                        return null;
+                    } catch {
+                        return 'Please enter a valid URL';
+                    }
+                },
+            });
+
+            if (url === undefined) {
+                return; // Cancelled
+            }
+
+            const key = await vscode.window.showInputBox({
+                title: 'DSAgent API Key',
+                prompt: 'Enter the API key (leave empty if not required)',
+                value: cfg.get<string>('apiKey', ''),
+                password: true,
+            });
+
+            if (key === undefined) {
+                return; // Cancelled
+            }
+
+            await cfg.update('serverUrl', url, vscode.ConfigurationTarget.Global);
+            await cfg.update('apiKey', key, vscode.ConfigurationTarget.Global);
+            // The onDidChangeConfiguration listener handles reconnection
         })
     );
 
@@ -154,11 +222,17 @@ export async function activate(context: vscode.ExtensionContext) {
     // Auto-connect if enabled
     if (config.get<boolean>('autoConnect', true)) {
         try {
-            await client.connect();
-            vscode.window.showInformationMessage('DSAgent: Connected to server');
+            const connected = await client.connect();
+            if (connected) {
+                vscode.window.showInformationMessage(`DSAgent: Connected to ${serverUrl}`);
+            } else {
+                vscode.window.showWarningMessage(
+                    `DSAgent: Could not connect to ${serverUrl}. Make sure the server is running.`
+                );
+            }
         } catch (error) {
             vscode.window.showWarningMessage(
-                'DSAgent: Could not connect to server. Make sure "dsagent serve" is running.'
+                `DSAgent: Could not connect to ${serverUrl}. Make sure the server is running.`
             );
         }
     }

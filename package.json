@@ -100,6 +100,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "dsagent.configureServer",
+        "title": "Configure Server Connection",
+        "category": "DSAgent",
+        "icon": "$(gear)"
+      },
+      {
         "command": "dsagent.connectServer",
         "title": "Connect to Server",
         "category": "DSAgent",
@@ -213,12 +219,20 @@
         "dsagent.serverUrl": {
           "type": "string",
           "default": "http://localhost:8000",
-          "description": "DSAgent server URL"
+          "description": "DSAgent server URL (e.g. http://localhost:8000 or https://remote-server.example.com:8000)",
+          "order": 1
+        },
+        "dsagent.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authenticating with a remote DSAgent server (matches DSAGENT_API_KEY on the server)",
+          "order": 2
         },
         "dsagent.autoConnect": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically connect to server on startup"
+          "description": "Automatically connect to server on startup",
+          "order": 3
         },
         "dsagent.model": {
           "type": "string",
