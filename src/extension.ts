@@ -69,8 +69,16 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('dsagent.openChat', () => {
             chatPanel.show();
         }),
-        vscode.commands.registerCommand('dsagent.startChat', () => {
-            chatPanel.startNewChat();
+        vscode.commands.registerCommand('dsagent.startChat', async () => {
+            const name = await vscode.window.showInputBox({
+                title: 'New DSAgent Session',
+                prompt: 'Enter a name for the session',
+                placeHolder: 'e.g. iris analysis, sales report...',
+            });
+            if (name === undefined) {
+                return; // Cancelled
+            }
+            chatPanel.startNewChat(name || undefined);
         })
     );
 

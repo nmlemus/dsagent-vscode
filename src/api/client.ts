@@ -77,7 +77,7 @@ export class DSAgentClient extends EventEmitter {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                name: name || `Session ${new Date().toISOString()}`,
+                ...(name && { name }),
                 model: model || 'gpt-4o',
                 hitl_mode: 'none'
             }),
