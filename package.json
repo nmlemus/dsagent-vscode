@@ -147,6 +147,12 @@
         "icon": "$(sync)"
       },
       {
+        "command": "dsagent.exportNotebook",
+        "title": "Export Session Notebook",
+        "category": "DSAgent",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "dsagent.refreshArtifacts",
         "title": "Refresh Artifacts",
         "category": "DSAgent",
@@ -194,6 +200,11 @@
           "command": "dsagent.refreshSessions",
           "when": "view == dsagent.sessionsView",
           "group": "navigation@1"
+        },
+        {
+          "command": "dsagent.exportNotebook",
+          "when": "view == dsagent.artifactsView",
+          "group": "navigation@0"
         },
         {
           "command": "dsagent.refreshArtifacts",

@@ -149,6 +149,46 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Export notebook — download .ipynb and open or save
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.exportNotebook', async () => {
+            if (!client.session) {
+                vscode.window.showWarningMessage('No active session. Start a chat first.');
+                return;
+            }
+
+            try {
+                const data = await client.downloadNotebook();
+                const sessionName = client.session.name || client.session.id;
+                const defaultName = `${sessionName}.ipynb`;
+
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(path.join(
+                        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir(),
+                        defaultName
+                    )),
+                    filters: { 'Jupyter Notebook': ['ipynb'] },
+                });
+
+                if (!saveUri) {
+                    return; // Cancelled
+                }
+
+                fs.writeFileSync(saveUri.fsPath, data);
+                const openChoice = await vscode.window.showInformationMessage(
+                    `Notebook exported to ${saveUri.fsPath}`,
+                    'Open Notebook'
+                );
+                if (openChoice === 'Open Notebook') {
+                    await vscode.commands.executeCommand('vscode.openWith', saveUri, 'jupyter-notebook');
+                }
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`Failed to export notebook: ${msg}`);
+            }
+        })
+    );
+
     // Sessions tree view (left sidebar)
     const sessionsProvider = new SessionsTreeProvider(client);
     context.subscriptions.push(
