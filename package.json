@@ -2,7 +2,7 @@
   "name": "dsagent",
   "displayName": "DSAgent - AI Data Science Assistant",
   "description": "AI-powered data science agent for VS Code. Analyze data, create visualizations, and build models with natural language.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "nmlemus",
   "repository": {
     "type": "git",
@@ -342,14 +342,20 @@
         },
         "dsagent.model": {
           "type": "string",
-          "default": "gpt-4o",
+          "default": "gpt-5.1",
           "enum": [
-            "gpt-4o",
-            "gpt-4o-mini",
+            "gpt-5.1",
+            "gpt-5.2",
+            "gpt-5.2-codex",
             "claude-sonnet-4-20250514",
             "claude-opus-4-20250514",
-            "gemini-2.0-flash",
-            "gemini-2.5-pro"
+            "gemini-3-pro-preview",
+            "gemini-3-flash-preview",
+            "groq/openai/gpt-oss-120b",
+            "groq/qwen/qwen3-32b",
+            "groq/moonshotai/kimi-k2-instruct-0905",
+            "openrouter/qwen/qwen3-coder-next",
+            "openrouter/minimax/minimax-m2.1"
           ],
           "description": "Default LLM model to use"
         },

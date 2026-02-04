@@ -80,7 +80,7 @@ export class DSAgentClient extends EventEmitter {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ...(name && { name }),
-                model: model || 'gpt-4o',
+                model: model || 'gpt-5.1',
                 hitl_mode: hitlMode || 'none'
             }),
         });
