@@ -52,7 +52,31 @@ Or configure in settings:
 | `dsagent.serverUrl` | `http://localhost:8000` | DSAgent server URL |
 | `dsagent.apiKey` | | API key for remote server authentication |
 | `dsagent.autoConnect` | `true` | Auto-connect on startup |
-| `dsagent.model` | `gpt-4o` | Default LLM model |
+| `dsagent.model` | `gpt-5.1` | Default LLM model |
+| `dsagent.hitlMode` | `none` | Human-in-the-Loop mode |
+
+### Available Models
+
+- `gpt-5.1` (default)
+- `gpt-5.2`
+- `gpt-5.2-codex`
+- `claude-sonnet-4-20250514`
+- `claude-opus-4-20250514`
+- `gemini-3-pro-preview`
+- `gemini-3-flash-preview`
+- `groq/openai/gpt-oss-120b`
+- `groq/qwen/qwen3-32b`
+- `groq/moonshotai/kimi-k2-instruct-0905`
+- `openrouter/qwen/qwen3-coder-next`
+- `openrouter/minimax/minimax-m2.1`
+
+### HITL Modes
+
+- `none` — Agent runs autonomously
+- `plan_only` — Approve before executing a plan
+- `full` — Approve every plan and code execution
+- `plan_and_answer` — Approve plans and final answers
+- `on_error` — Approve only when errors occur
 
 ## License
 
