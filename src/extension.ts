@@ -79,9 +79,10 @@ export async function activate(context: vscode.ExtensionContext) {
             if (name === undefined) {
                 return; // Cancelled
             }
-            const hitlMode = vscode.workspace.getConfiguration('dsagent')
-                .get<HITLMode>('hitlMode', 'none');
-            chatPanel.startNewChat(name || undefined, hitlMode);
+            const config = vscode.workspace.getConfiguration('dsagent');
+            const hitlMode = config.get<HITLMode>('hitlMode', 'none');
+            const model = config.get<string>('model', 'gpt-4o');
+            chatPanel.startNewChat(name || undefined, model, hitlMode);
         })
     );
 

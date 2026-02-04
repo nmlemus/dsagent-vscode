@@ -301,13 +301,13 @@ export class ChatPanelProvider {
         this._panel?.webview.postMessage(message);
     }
 
-    public async startNewChat(name?: string, hitlMode?: HITLMode): Promise<void> {
+    public async startNewChat(name?: string, model?: string, hitlMode?: HITLMode): Promise<void> {
         this.messages = [];
         this.currentPlan = null;
         this.isThinking = false;
 
         try {
-            await this.client.createSession(name, undefined, hitlMode);
+            await this.client.createSession(name, model, hitlMode);
             if (this._panel) {
                 this.postMessage({ type: 'newChat' });
             } else {
