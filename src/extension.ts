@@ -433,30 +433,51 @@ export async function activate(context: vscode.ExtensionContext) {
 
             const config = vscode.workspace.getConfiguration('dsagent');
             const serverUrl = config.get<string>('serverUrl', 'http://localhost:8000');
+            const apiKey = config.get<string>('apiKey', '');
             const fullUrl = `${serverUrl}${artifact.url}`;
 
+            const fetchHeaders: Record<string, string> = {};
+            if (apiKey) {
+                fetchHeaders['X-API-Key'] = apiKey;
+            }
+
             if (artifact.type === 'image') {
-                if (artifactPreviewPanel) {
-                    // Reuse the existing panel — just update title and content
-                    artifactPreviewPanel.title = artifact.name;
-                    artifactPreviewPanel.webview.html = getArtifactPreviewHtml(fullUrl, artifact.name);
-                    artifactPreviewPanel.reveal(vscode.ViewColumn.Beside);
-                } else {
-                    artifactPreviewPanel = vscode.window.createWebviewPanel(
-                        'dsagent.artifactPreview',
-                        artifact.name,
-                        vscode.ViewColumn.Beside,
-                        { enableScripts: false }
-                    );
-                    artifactPreviewPanel.webview.html = getArtifactPreviewHtml(fullUrl, artifact.name);
-                    artifactPreviewPanel.onDidDispose(() => {
-                        artifactPreviewPanel = undefined;
-                    });
+                // Fetch image with API key and convert to base64
+                try {
+                    const response = await fetch(fullUrl, { headers: fetchHeaders });
+                    if (!response.ok) {
+                        vscode.window.showErrorMessage(`Failed to load image: ${response.statusText}`);
+                        return;
+                    }
+                    const buffer = Buffer.from(await response.arrayBuffer());
+                    const base64 = buffer.toString('base64');
+                    const mimeType = response.headers.get('content-type') || 'image/png';
+                    const dataUrl = `data:${mimeType};base64,${base64}`;
+
+                    if (artifactPreviewPanel) {
+                        artifactPreviewPanel.title = artifact.name;
+                        artifactPreviewPanel.webview.html = getArtifactPreviewHtml(dataUrl, artifact.name);
+                        artifactPreviewPanel.reveal(vscode.ViewColumn.Beside);
+                    } else {
+                        artifactPreviewPanel = vscode.window.createWebviewPanel(
+                            'dsagent.artifactPreview',
+                            artifact.name,
+                            vscode.ViewColumn.Beside,
+                            { enableScripts: false }
+                        );
+                        artifactPreviewPanel.webview.html = getArtifactPreviewHtml(dataUrl, artifact.name);
+                        artifactPreviewPanel.onDidDispose(() => {
+                            artifactPreviewPanel = undefined;
+                        });
+                    }
+                } catch (error) {
+                    const msg = error instanceof Error ? error.message : 'Unknown error';
+                    vscode.window.showErrorMessage(`Failed to load image: ${msg}`);
                 }
             } else {
                 // Download to temp file and open in VS Code
                 try {
-                    const response = await fetch(fullUrl);
+                    const response = await fetch(fullUrl, { headers: fetchHeaders });
                     if (!response.ok) {
                         vscode.window.showErrorMessage(`Failed to download artifact: ${response.statusText}`);
                         return;

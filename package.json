@@ -2,7 +2,7 @@
   "name": "dsagent",
   "displayName": "DSAgent - AI Data Science Assistant",
   "description": "AI-powered data science agent for VS Code. Analyze data, create visualizations, and build models with natural language.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "nmlemus",
   "repository": {
     "type": "git",
