@@ -580,6 +580,41 @@ body {
   background-color: rgba(255, 80, 80, 0.1);
 }
 
+.hitl-actions .hitl-retry {
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, transparent);
+}
+
+.hitl-actions .hitl-retry:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.hitl-actions .hitl-skip {
+  background-color: transparent;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.2));
+}
+
+.hitl-actions .hitl-skip:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.hitl-actions .hitl-feedback-btn {
+  background-color: transparent;
+  color: var(--vscode-textLink-foreground);
+  border: 1px solid var(--vscode-textLink-foreground);
+}
+
+.hitl-actions .hitl-feedback-btn:hover:not(:disabled) {
+  background-color: rgba(100, 149, 237, 0.15);
+}
+
+.hitl-actions .hitl-feedback-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Connection Status */
 .connection-status {
   padding: 8px;

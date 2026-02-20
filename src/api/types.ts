@@ -3,7 +3,7 @@ export interface Session {
     name?: string;
     created_at: string;
     updated_at: string;
-    status: 'active' | 'completed' | 'error';
+    status: 'active' | 'paused' | 'completed' | 'error';
     message_count?: number;
     kernel_variables?: number;
     workspace_path?: string | null;
@@ -117,4 +117,14 @@ export interface Turn {
     answer: string | null;
     thinking: string | null;
     is_complete: boolean;
+}
+
+/** Session files (data, artifacts, notebooks). */
+export type FileCategory = 'data' | 'artifacts' | 'notebooks';
+
+export interface SessionFile {
+    name: string;
+    size?: number;
+    modified?: string;
+    category?: string;
 }

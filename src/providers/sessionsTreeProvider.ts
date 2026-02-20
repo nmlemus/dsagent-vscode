@@ -14,6 +14,7 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<SessionItem
         this.client.on('sessionCreated', () => this.refresh());
         this.client.on('sessionDeleted', () => this.refresh());
         this.client.on('sessionResumed', () => this.refresh());
+        this.client.on('sessionUpdated', () => this.refresh());
     }
 
     refresh(): void {

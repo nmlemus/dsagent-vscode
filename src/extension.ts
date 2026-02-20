@@ -10,6 +10,7 @@ import { DSAgentNotebookController } from './providers/notebookController';
 import { SessionsTreeProvider } from './providers/sessionsTreeProvider';
 import { VariablesTreeProvider } from './providers/variablesTreeProvider';
 import { ArtifactsTreeProvider } from './providers/artifactsTreeProvider';
+import { FilesTreeProvider, SessionFileItem } from './providers/filesTreeProvider';
 import { StatusBarManager } from './services/statusBar';
 import { NotebookSyncService } from './services/notebookSync';
 import { registerCommands } from './commands';
@@ -419,6 +420,27 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.registerTreeDataProvider('dsagent.artifactsView', artifactsProvider)
     );
 
+    // Files tree view (left sidebar)
+    const filesProvider = new FilesTreeProvider(client);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('dsagent.filesView', filesProvider)
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('dsagent.refreshFiles', () => {
+            filesProvider.refresh();
+        }),
+        vscode.commands.registerCommand('dsagent.downloadFile', async (item: SessionFileItem) => {
+            if (item && item instanceof SessionFileItem && item.file && item.category) {
+                await filesProvider.downloadFileItem(item.file, item.category);
+            }
+        }),
+        vscode.commands.registerCommand('dsagent.deleteFile', async (item: SessionFileItem) => {
+            if (item && item instanceof SessionFileItem && item.file && item.category) {
+                await filesProvider.deleteFileItem(item.file, item.category);
+            }
+        })
+    );
+
     // Artifacts commands
     let artifactPreviewPanel: vscode.WebviewPanel | undefined;
 
@@ -498,7 +520,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Register all commands
-    registerCommands(context, client, chatPanel, sessionsProvider, variablesProvider);
+    registerCommands(context, client, chatPanel, sessionsProvider, variablesProvider, artifactsProvider);
 
     // Auto-connect if enabled
     if (config.get<boolean>('autoConnect', true)) {

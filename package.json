@@ -2,7 +2,7 @@
   "name": "dsagent",
   "displayName": "DSAgent - AI Data Science Assistant",
   "description": "AI-powered data science agent for VS Code. Analyze data, create visualizations, and build models with natural language.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "nmlemus",
   "repository": {
     "type": "git",
@@ -32,6 +32,7 @@
     "onView:dsagent.sessionsView",
     "onView:dsagent.variablesView",
     "onView:dsagent.artifactsView",
+    "onView:dsagent.filesView",
     "onLanguage:python",
     "onNotebook:jupyter-notebook"
   ],
@@ -82,6 +83,10 @@
         {
           "id": "dsagent.artifactsView",
           "name": "Artifacts"
+        },
+        {
+          "id": "dsagent.filesView",
+          "name": "Files"
         }
       ]
     },
@@ -227,6 +232,24 @@
         "title": "Refresh Variables",
         "category": "DSAgent",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "dsagent.refreshFiles",
+        "title": "Refresh Files",
+        "category": "DSAgent",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dsagent.downloadFile",
+        "title": "Download (Save As)",
+        "category": "DSAgent",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "dsagent.deleteFile",
+        "title": "Delete File",
+        "category": "DSAgent",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -279,6 +302,31 @@
           "command": "dsagent.inspectVariable",
           "when": "viewItem == variable",
           "group": "inline"
+        },
+        {
+          "command": "dsagent.archiveSession",
+          "when": "view == dsagent.sessionsView && viewItem == session",
+          "group": "1_session@0"
+        },
+        {
+          "command": "dsagent.exportSessionAsJson",
+          "when": "view == dsagent.sessionsView && viewItem == session",
+          "group": "1_session@1"
+        },
+        {
+          "command": "dsagent.deleteArtifact",
+          "when": "view == dsagent.artifactsView && viewItem == artifact",
+          "group": "1_artifact@0"
+        },
+        {
+          "command": "dsagent.downloadFile",
+          "when": "viewItem == sessionFile",
+          "group": "1_files@0"
+        },
+        {
+          "command": "dsagent.deleteFile",
+          "when": "viewItem == sessionFile",
+          "group": "1_files@1"
         }
       ],
       "view/title": [
@@ -293,9 +341,24 @@
           "group": "navigation@1"
         },
         {
+          "command": "dsagent.setSessionModel",
+          "when": "view == dsagent.sessionsView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "dsagent.setSessionStatus",
+          "when": "view == dsagent.sessionsView",
+          "group": "navigation@3"
+        },
+        {
           "command": "dsagent.refreshVariables",
           "when": "view == dsagent.variablesView",
           "group": "navigation@1"
+        },
+        {
+          "command": "dsagent.resetKernel",
+          "when": "view == dsagent.variablesView",
+          "group": "navigation@2"
         },
         {
           "command": "dsagent.exportNotebook",
@@ -305,6 +368,11 @@
         {
           "command": "dsagent.refreshArtifacts",
           "when": "view == dsagent.artifactsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dsagent.refreshFiles",
+          "when": "view == dsagent.filesView",
           "group": "navigation@1"
         }
       ]

@@ -230,7 +230,15 @@ function App() {
             answer: message.answer || null,
             message: message.message || null,
           });
-          setHitlFeedback('');
+          // Pre-fill feedback for editing when plan or code is pending
+          const at = message.awaitingType || 'plan';
+          setHitlFeedback(
+            at === 'plan' && message.plan?.raw_text
+              ? message.plan.raw_text
+              : at === 'code' && message.code
+                ? message.code
+                : ''
+          );
           break;
 
         case 'connected':
@@ -320,27 +328,39 @@ function App() {
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleApprove = () => {
-    vscode.postMessage({ type: 'approve', feedback: hitlFeedback || undefined });
-    setHitlRequest(null);
-    setHitlFeedback('');
-  };
-
-  const handleReject = () => {
-    vscode.postMessage({ type: 'reject', reason: hitlFeedback || undefined });
-    setHitlRequest(null);
-    setHitlFeedback('');
-  };
-
-  const handleModify = () => {
-    if (!hitlFeedback.trim()) return;
+  const sendHitlRespond = (action: 'approve' | 'reject' | 'modify' | 'retry' | 'skip' | 'feedback', payload?: { message?: string; modified_plan?: string; modified_code?: string }) => {
     vscode.postMessage({
-      type: 'modify',
-      message: hitlFeedback,
-      modification: hitlFeedback,
+      type: 'hitlRespond',
+      action,
+      ...(payload?.message !== undefined && { message: payload.message }),
+      ...(payload?.modified_plan !== undefined && { modified_plan: payload.modified_plan }),
+      ...(payload?.modified_code !== undefined && { modified_code: payload.modified_code }),
     });
     setHitlRequest(null);
     setHitlFeedback('');
+  };
+
+  const handleApprove = () => {
+    sendHitlRespond('approve', hitlFeedback.trim() ? { message: hitlFeedback.trim() } : undefined);
+  };
+
+  const handleReject = () => {
+    sendHitlRespond('reject', hitlFeedback.trim() ? { message: hitlFeedback.trim() } : undefined);
+  };
+
+  const handleModify = () => {
+    const text = hitlFeedback.trim();
+    if (!text) return;
+    const isPlan = hitlRequest?.awaitingType === 'plan';
+    sendHitlRespond('modify', isPlan ? { modified_plan: text } : { modified_code: text });
+  };
+
+  const handleRetry = () => sendHitlRespond('retry');
+  const handleSkip = () => sendHitlRespond('skip');
+
+  const handleFeedback = () => {
+    if (!hitlFeedback.trim()) return;
+    sendHitlRespond('feedback', { message: hitlFeedback.trim() });
   };
 
   // Render message based on type
@@ -452,23 +472,38 @@ function App() {
 
             <textarea
               className="hitl-feedback"
-              placeholder="Optional feedback or modifications..."
+              placeholder={
+                hitlRequest.awaitingType === 'plan'
+                  ? 'Edit plan above or add feedback...'
+                  : hitlRequest.awaitingType === 'code'
+                    ? 'Edit code above or add feedback...'
+                    : 'Optional feedback or message...'
+              }
               value={hitlFeedback}
               onChange={(e) => setHitlFeedback(e.target.value)}
-              rows={2}
+              rows={hitlRequest.awaitingType === 'code' ? 6 : 3}
             />
 
             <div className="hitl-actions">
               <button className="approve" onClick={handleApprove}>
                 Approve
               </button>
-              {hitlFeedback.trim() && (
-                <button className="modify" onClick={handleModify}>
+              <button className="reject" onClick={handleReject}>
+                Reject
+              </button>
+              {(hitlRequest.awaitingType === 'plan' || hitlRequest.awaitingType === 'code') && (
+                <button className="modify" onClick={handleModify} disabled={!hitlFeedback.trim()}>
                   Modify
                 </button>
               )}
-              <button className="reject" onClick={handleReject}>
-                Reject
+              <button className="hitl-retry" onClick={handleRetry}>
+                Retry
+              </button>
+              <button className="hitl-skip" onClick={handleSkip}>
+                Skip
+              </button>
+              <button className="hitl-feedback-btn" onClick={handleFeedback} disabled={!hitlFeedback.trim()}>
+                Feedback
               </button>
             </div>
           </div>

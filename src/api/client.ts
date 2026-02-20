@@ -5,10 +5,12 @@ import type {
     Artifact,
     Session,
     ExecutionResult,
+    FileCategory,
     HITLMode,
     HITLStatus,
     KernelState,
     PlanState,
+    SessionFile,
     Turn
 } from './types';
 
@@ -142,6 +144,32 @@ export class DSAgentClient extends EventEmitter {
         }
 
         this.emit('sessionDeleted', sessionId);
+    }
+
+    async archiveSession(sessionId: string): Promise<Session> {
+        const response = await this.fetch(`/api/sessions/${sessionId}/archive`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to archive session: ${error}`);
+        }
+        const session: Session = await response.json();
+        if (this.currentSession?.id === sessionId) {
+            this.currentSession = session;
+            this.emit('sessionUpdated', session);
+        }
+        return session;
+    }
+
+    async exportSessionJson(sessionId: string): Promise<Uint8Array> {
+        const response = await this.fetch(`/api/sessions/${sessionId}/export`);
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to export session: ${error}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
     }
 
     // === Chat with SSE Streaming (native http for real-time delivery) ===
@@ -376,23 +404,29 @@ export class DSAgentClient extends EventEmitter {
         });
     }
 
-    async respondAction(action: string, message?: string, modification?: string): Promise<void> {
+    async respondAction(
+        action: 'approve' | 'reject' | 'modify' | 'retry' | 'skip' | 'feedback',
+        message?: string,
+        modifiedPlan?: string,
+        modifiedCode?: string
+    ): Promise<void> {
         if (!this.currentSession) return;
+
+        const body: Record<string, string> = { action };
+        if (message) body.message = message;
+        if (modifiedPlan) body.modified_plan = modifiedPlan;
+        if (modifiedCode) body.modified_code = modifiedCode;
 
         await this.fetch(`/api/sessions/${this.currentSession.id}/hitl/respond`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action,
-                message,
-                modified_plan: modification
-            }),
+            body: JSON.stringify(body),
         });
     }
 
     // === Session Update ===
 
-    async updateSession(data: { name?: string; hitl_mode?: HITLMode }): Promise<Session> {
+    async updateSession(data: { name?: string; status?: string; model?: string; hitl_mode?: HITLMode }): Promise<Session> {
         if (!this.currentSession) {
             throw new Error('No active session');
         }
@@ -434,6 +468,17 @@ export class DSAgentClient extends EventEmitter {
     }
 
     // === Artifacts ===
+
+    async deleteArtifact(sessionId: string, filename: string): Promise<void> {
+        const response = await this.fetch(
+            `/api/sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(filename)}`,
+            { method: 'DELETE' }
+        );
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to delete artifact: ${error}`);
+        }
+    }
 
     async listArtifacts(sessionId?: string): Promise<Artifact[]> {
         const id = sessionId || this.currentSession?.id;
@@ -522,6 +567,82 @@ export class DSAgentClient extends EventEmitter {
             return response.json();
         } catch {
             return null;
+        }
+    }
+
+    async resetKernel(): Promise<KernelState> {
+        if (!this.currentSession) {
+            throw new Error('No active session');
+        }
+        const response = await this.fetch(
+            `/api/sessions/${this.currentSession.id}/kernel/reset`,
+            { method: 'POST' }
+        );
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to reset kernel: ${error}`);
+        }
+        const state: KernelState = await response.json();
+        this.emit('kernelReset', state);
+        return state;
+    }
+
+    // === Session Files (list / download / delete) ===
+
+    async listFiles(sessionId?: string, category: FileCategory = 'data'): Promise<SessionFile[]> {
+        const id = sessionId || this.currentSession?.id;
+        if (!id) {
+            return [];
+        }
+
+        try {
+            const response = await this.fetch(
+                `/api/sessions/${id}/files?category=${encodeURIComponent(category)}`
+            );
+            if (!response.ok) {
+                return [];
+            }
+            const data = await response.json();
+            if (data && Array.isArray(data.files)) {
+                return data.files;
+            }
+            if (Array.isArray(data)) {
+                return data;
+            }
+            return [];
+        } catch {
+            return [];
+        }
+    }
+
+    async downloadFile(
+        sessionId: string,
+        filename: string,
+        category: FileCategory = 'data'
+    ): Promise<Uint8Array> {
+        const path = `/api/sessions/${encodeURIComponent(sessionId)}/files/${encodeURIComponent(filename)}?category=${encodeURIComponent(category)}`;
+        const response = await this.fetch(path);
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to download file: ${error}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    }
+
+    async deleteFile(
+        sessionId: string,
+        filename: string,
+        category: FileCategory = 'data'
+    ): Promise<void> {
+        const path = `/api/sessions/${encodeURIComponent(sessionId)}/files/${encodeURIComponent(filename)}?category=${encodeURIComponent(category)}`;
+        const response = await this.fetch(path, { method: 'DELETE' });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to delete file: ${error}`);
         }
     }
 

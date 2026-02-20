@@ -119,14 +119,21 @@ export class ChatPanelProvider {
                 case 'sendMessage':
                     await this.handleSendMessage(data.content);
                     break;
+                case 'hitlRespond': {
+                    const action = data.action as 'approve' | 'reject' | 'modify' | 'retry' | 'skip' | 'feedback';
+                    await this.client.respondAction(
+                        action,
+                        data.message,
+                        data.modified_plan,
+                        data.modified_code
+                    );
+                    break;
+                }
                 case 'approve':
                     this.client.approveAction(data.feedback);
                     break;
                 case 'reject':
                     this.client.rejectAction(data.reason);
-                    break;
-                case 'modify':
-                    this.client.respondAction('modify', data.message, data.modification);
                     break;
                 case 'attachFile':
                     await this.handleAttachFile();
